@@ -250,7 +250,6 @@ class flame:
 
                             point[3] += 1 # Hitcounter
                             self.mutex.release()
-            #print(sample,"/",int(self.samples/self.threads))
         self.barrier.wait()
 
     def reduce(self,m,pixels,image,col_bar,save_bar,mut):
@@ -268,20 +267,15 @@ class flame:
         mut.acquire()
         self.max_freq = max(local_max, self.max_freq)
         mut.release()
-
-        print("%i waits"%(m))
         col_bar.wait()
 
         for x in range(m,self.xres,self.threads):
-            #print("Thread %i does row %i"%(m,x))
             for y in range(self.yres):
                 if(pixels[y][x][3] > 0):
                     image[y][x] = pixels[y][x][:3] * ((math.log(pixels[y][x][3],self.max_freq) ** (1.0/self.gamma)))
-        print("%i waits"%(m))
         save_bar.wait()
 
     def save(self,path):
-        print("reduce")
 
         self.max_freq = 1
         pixels = np.zeros((self.yres , self.xres ,4), dtype = np.uint8)
@@ -294,10 +288,23 @@ class flame:
             t.start()
 
         col_bar.wait()
-        print("apply gamma correction")
         save_bar.wait()
         Image.fromarray(image).save(path)
 
+    def return_image(self):
+        self.max_freq = 1
+        pixels = np.zeros((self.yres , self.xres ,4), dtype = np.uint8)
+        image = np.zeros((self.yres , self.xres ,3), dtype = np.uint8)
+        mut = Lock()
+        col_bar = Barrier(self.threads + 1)
+        save_bar = Barrier(self.threads + 1)
+        for m in range(self.threads):
+            t = Thread(target=self.reduce, args=(m,pixels,image,col_bar,save_bar,mut))
+            t.start()
+
+        col_bar.wait()
+        save_bar.wait()
+        return Image.fromarray(image)
 
 def itterate(cur_x,cur_y,function):
     for variation in function.variations:
