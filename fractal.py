@@ -1,6 +1,6 @@
 import numpy as np
 import random
-import functions as f
+from . import functions as f
 import math
 from PIL import Image
 from threading import (Thread, Lock, Barrier)
